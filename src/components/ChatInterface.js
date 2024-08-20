@@ -4,13 +4,11 @@ import "./ChatInterface.css";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
 function ChatInterface({ userId, onSurveyPage }) {
-  const [studyData, setStudyData] = useState(null);
-  const [currentScenarioIndex, setCurrentScenarioIndex] = useState(0);
+  const [prompts, setPrompts] = useState([]);
   const [currentPromptIndex, setCurrentPromptIndex] = useState(0);
-  const [messages, setMessages] = useState([]);
   const [userInput, setUserInput] = useState("");
   const [isComplete, setIsComplete] = useState(false);
-  const [allScenariosComplete, setAllScenariosComplete] = useState(false);
+  const [allPromptsComplete, setAllPromptsComplete] = useState(false);
   const [isTutorial, setIsTutorial] = useState(true);
   const [tutorialStep, setTutorialStep] = useState(0);
   const [tutorialPosition, setTutorialPosition] = useState({
@@ -20,72 +18,75 @@ function ChatInterface({ userId, onSurveyPage }) {
   const [tutorialStarted, setTutorialStarted] = useState(false);
   const [totalPrompts, setTotalPrompts] = useState(0);
   const [completedPrompts, setCompletedPrompts] = useState(0);
-  const [scenarioComplete, setScenarioComplete] = useState(false); // New state to track scenario completion
   const [highlightedElement, setHighlightedElement] = useState(null);
 
-  const scenarioInfoRef = useRef(null);
-  const firstMessageRef = useRef(null);
-  const receiverMessageRef = useRef(null);
+  const promptInfoRef = useRef(null);
   const inputAreaRef = useRef(null);
-  const userInputRef = useRef(null); // Add a ref for the input element
+  const userInputRef = useRef(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const fetchStudyData = useCallback(async () => {
+  const fetchPrompts = useCallback(async () => {
+    console.log("fetchPrompts called");
     try {
       const response = await fetch(`${BACKEND_URL}/api/string-math-data`);
-      const data = await response.json();
-
-      // Add custom prompts for the first scenario
-      data.scenarios[0].prompts.unshift(
-        {
-          prompt:
-            "Hi, thanks for reaching out! I'm actually interested in hearing more about Audi. Let's chat soon.",
-        },
-        {
-          prompt:
-            "Hi, I appreciate the message, but I'm not looking for a car right now. Thanks!",
-        }
-      );
-
-      // Add custom prompts for the second scenario
-      data.scenarios[1].prompts.unshift(
-        {
-          prompt:
-            "Hi, I just saw your message. This sounds serious—what do I need to do?",
-        },
-        { prompt: "Haha, I don't think the IRS contacts people over text. Bye" }
-      );
-
-      console.log(data);
-      setStudyData(data);
-
-      const total = data.scenarios.reduce(
-        (sum, scenario) => sum + scenario.prompts.length,
-        0
-      );
-      setTotalPrompts(total);
+      const prompts = await response.json();
+      setPrompts(prompts);
+      console.log(prompts);
+      console.log(prompts.length);
+      setTotalPrompts(prompts.length);
     } catch (error) {
-      console.error("Error fetching study data:", error);
+      console.error("Error fetching prompts:", error);
     }
   }, []);
+
   useEffect(() => {
-    fetchStudyData();
-  }, [fetchStudyData]);
+    fetchPrompts();
+  }, [fetchPrompts]);
+
+  const renderPrompt = (prompt) => {
+    const boldRegex = /\*\*(.*?)\*\*/g;
+    const lines = prompt.split("\n"); // Split the prompt by newlines
+
+    return lines.map((line, index) => {
+      const parts = [];
+      let lastIndex = 0;
+      let match;
+
+      // Iterate through all bold text matches in the current line
+      while ((match = boldRegex.exec(line)) !== null) {
+        const start = match.index;
+        const end = start + match[0].length;
+
+        // Add any non-bold text before the current match
+        if (start > lastIndex) {
+          parts.push(line.substring(lastIndex, start));
+        }
+
+        // Add the bold text as a <strong> element
+        parts.push(<strong key={`bold-${index}-${start}`}>{match[1]}</strong>);
+
+        lastIndex = end;
+      }
+
+      // Add any remaining non-bold text after the last match
+      if (lastIndex < line.length) {
+        parts.push(line.substring(lastIndex));
+      }
+
+      // Wrap the line in a <p> tag to preserve newlines
+      return <p key={index}>{parts}</p>;
+    });
+  };
 
   const startNewRound = useCallback(() => {
-    if (!studyData) return;
+    if (!prompts.length) return;
 
-    const currentScenario = studyData.scenarios[currentScenarioIndex];
-    const currentPrompt = currentScenario.prompts[currentPromptIndex];
+    const currentPrompt = prompts[currentPromptIndex];
 
-    setMessages([
-      { sender: "user", content: currentScenario.user_initial_message },
-      { sender: "receiver", content: currentPrompt.prompt },
-    ]);
+    setUserInput("");
     setIsComplete(false);
-    setScenarioComplete(false); // Reset scenario completion state
 
-    if (currentScenarioIndex === 0 && currentPromptIndex === 0) {
+    if (currentPromptIndex === 0) {
       setIsTutorial(true);
       setTutorialStep(0);
     } else {
@@ -97,38 +98,31 @@ function ChatInterface({ userId, onSurveyPage }) {
         userInputRef.current.focus();
       }
     }, 0);
-  }, [studyData, currentScenarioIndex, currentPromptIndex]);
+  }, [prompts, currentPromptIndex]);
 
   useEffect(() => {
-    if (studyData) {
+    if (prompts.length) {
       startNewRound();
     }
-  }, [studyData, startNewRound]);
+  }, [prompts, startNewRound]);
 
   const handleSendMessage = async () => {
-    if (userInput.trim() === "" || allScenariosComplete || isSaving) return;
+    if (userInput.trim() === "" || allPromptsComplete || isSaving) return;
 
-    const newMessage = { sender: "user", content: userInput };
-    const userResponse = userInput; // Store userInput before clearing it
-    setMessages((prevMessages) => [...prevMessages, newMessage]);
-    setUserInput("");
-    setIsSaving(true); // Set saving status to true
+    setIsSaving(true);
 
     const saveConversation = async (retryCount = 3) => {
       try {
-        await fetch(`${BACKEND_URL}/api/save-conversation`, {
+        await fetch(`${BACKEND_URL}/api/save-captcha-response`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             uid: userId,
-            // u_name: user_name,
-            scenario_id: studyData.scenarios[currentScenarioIndex].id,
-            first_message: messages[0].content,
-            benchmark_prompt: messages[1].content,
-            user_response: userResponse, // Use stored userInput
-            response_time: 0, // need to implement response time tracking
+            // prompt_id: prompts[currentPromptIndex].id,
+            prompt: prompts[currentPromptIndex].prompt,
+            user_response: userInput,
           }),
         });
         setIsComplete(true);
@@ -141,7 +135,7 @@ function ChatInterface({ userId, onSurveyPage }) {
           alert("Failed to save conversation. Please try again.");
         }
       } finally {
-        setIsSaving(false); // Reset saving status
+        setIsSaving(false);
       }
     };
 
@@ -149,13 +143,10 @@ function ChatInterface({ userId, onSurveyPage }) {
   };
 
   const handleNextRound = () => {
-    const currentScenario = studyData.scenarios[currentScenarioIndex];
-    if (currentPromptIndex + 1 < currentScenario.prompts.length) {
+    if (currentPromptIndex + 1 < prompts.length) {
       setCurrentPromptIndex((prevIndex) => prevIndex + 1);
-    } else if (currentScenarioIndex + 1 < studyData.scenarios.length) {
-      setScenarioComplete(true); // Mark scenario as complete
     } else {
-      setAllScenariosComplete(true);
+      setAllPromptsComplete(true);
     }
     setCompletedPrompts((prev) => prev + 1);
 
@@ -166,35 +157,20 @@ function ChatInterface({ userId, onSurveyPage }) {
     }, 0);
   };
 
-  const handleNextScenario = () => {
-    setCurrentScenarioIndex((prevIndex) => prevIndex + 1);
-    setCurrentPromptIndex(0);
-    setScenarioComplete(false); // Reset scenario completion state
-    startNewRound();
-  };
-
   useEffect(() => {
-    if (isComplete && !scenarioComplete) {
-      handleNextRound(); // Automatically move to the next round
+    if (isComplete) {
+      handleNextRound();
     }
-  }, [isComplete, scenarioComplete]);
+  }, [isComplete]);
 
   const positionTutorialDialog = useCallback((step) => {
     let targetRef;
     switch (step) {
       case 0:
-        targetRef = scenarioInfoRef;
-        setHighlightedElement("scenario-info");
+        targetRef = promptInfoRef;
+        setHighlightedElement("prompt-info");
         break;
       case 1:
-        targetRef = firstMessageRef;
-        setHighlightedElement("first-message");
-        break;
-      case 2:
-        targetRef = receiverMessageRef;
-        setHighlightedElement("receiver-message");
-        break;
-      case 3:
         targetRef = inputAreaRef;
         setHighlightedElement("message-input");
         break;
@@ -213,40 +189,37 @@ function ChatInterface({ userId, onSurveyPage }) {
   }, []);
 
   useEffect(() => {
-    if (isTutorial && studyData) {
-      // Use a short delay to ensure DOM elements are rendered
+    if (isTutorial && prompts.length) {
       const timer = setTimeout(() => {
         positionTutorialDialog(tutorialStep);
       }, 100);
 
       return () => clearTimeout(timer);
     }
-  }, [isTutorial, tutorialStep, positionTutorialDialog, studyData]);
+  }, [isTutorial, tutorialStep, positionTutorialDialog, prompts]);
 
   const handleTutorialNext = () => {
-    if (tutorialStep < 3) {
+    if (tutorialStep < 1) {
       setTutorialStep((prevStep) => prevStep + 1);
     } else {
       setIsTutorial(false);
       setTutorialStarted(true);
-      setHighlightedElement(null); // Remove highlight after tutorial
+      setHighlightedElement(null);
     }
   };
 
   useEffect(() => {
-    if (allScenariosComplete) {
-      onSurveyPage(); // Call the onSurveyPage function when all scenarios are complete
+    if (allPromptsComplete) {
+      onSurveyPage();
     }
-  }, [allScenariosComplete, onSurveyPage]);
+  }, [allPromptsComplete, onSurveyPage]);
 
   const handleKeyPress = (event) => {
     if (event.key === "Enter") {
       if (isTutorial) {
         handleTutorialNext();
-      } else if (isComplete && !scenarioComplete) {
+      } else if (isComplete) {
         handleNextRound();
-      } else if (scenarioComplete) {
-        handleNextScenario();
       } else {
         handleSendMessage();
       }
@@ -261,22 +234,18 @@ function ChatInterface({ userId, onSurveyPage }) {
   }, [
     isTutorial,
     isComplete,
-    scenarioComplete,
     handleSendMessage,
     handleNextRound,
-    handleNextScenario,
     handleTutorialNext,
   ]);
 
   const renderTutorialDialog = () => {
     const dialogContent = [
-      "This is the scenario title and description. It is the context for the conversation.",
-      "This is the first message from YOU. It is the first message in the conversation.",
-      "This is the message from the receiver. It's a response to your initial message.",
-      "Now it's your turn! Press Enter or click 'Start' to begin, then type your response and press Enter or click 'Send'.",
+      "This is the task that you have to complete.",
+      "Type your response and press Enter or click 'Submit'.",
     ][tutorialStep];
 
-    const progressPercentage = ((tutorialStep + 1) / 4) * 100;
+    const progressPercentage = ((tutorialStep + 1) / 2) * 100;
 
     return (
       <div
@@ -293,13 +262,13 @@ function ChatInterface({ userId, onSurveyPage }) {
           </div>
           <span
             className={`tutorial-icon ${
-              tutorialStep === 3 ? "check-icon" : "info-icon"
+              tutorialStep === 1 ? "check-icon" : "info-icon"
             }`}
           ></span>
         </div>
         <p>{dialogContent}</p>
         <button onClick={handleTutorialNext} className="green-button">
-          {tutorialStep < 3 ? "Next" : "Start"}
+          {tutorialStep < 1 ? "Next" : "Start"}
         </button>
         <p className="enter-instruction">Press Enter to continue</p>
       </div>
@@ -307,80 +276,47 @@ function ChatInterface({ userId, onSurveyPage }) {
   };
 
   const renderProgressBar = () => {
-    const currentScenario = studyData.scenarios[currentScenarioIndex];
-    const scenarioPrompts = currentScenario.prompts.length;
-    const progressPercentage =
-      ((currentPromptIndex + 1) / scenarioPrompts) * 100;
-    // const progressPercentage = (completedPrompts / totalPrompts) * 100;
+    const progressPercentage = ((completedPrompts + 1) / totalPrompts) * 100;
     return (
       <div className="overall-progress-bar">
         <div
           className="progress-fill"
           style={{ width: `${progressPercentage}%` }}
         ></div>
-        {/* <span className="progress-text">{`${completedPrompts} / ${totalPrompts} Prompts Completed`}</span> */}
         <span className="progress-text">{`${
-          currentPromptIndex + 1
-        } / ${scenarioPrompts} Prompts Completed`}</span>
+          completedPrompts + 1
+        } / ${totalPrompts} Prompts Completed`}</span>
       </div>
     );
   };
 
-  if (!studyData) {
+  if (!prompts.length) {
+    console.log("asdasd");
     return <div>Loading...</div>;
   }
 
-  const currentScenario = studyData.scenarios[currentScenarioIndex];
-
+  const currentPrompt = prompts[currentPromptIndex];
+  console.log(currentPrompt);
   return (
     <div className="chat-interface">
-      {!allScenariosComplete && renderProgressBar()}
-      {allScenariosComplete ? (
+      {!allPromptsComplete && renderProgressBar()}
+      {allPromptsComplete ? (
         <></>
       ) : (
         <>
           {tutorialStep >= 0 && (
             <div
-              className={`scenario-info ${
-                highlightedElement === "scenario-info" ? "highlight-glow" : ""
+              className={`prompt-info ${
+                highlightedElement === "prompt-info" ? "highlight-glow" : ""
               }`}
-              ref={scenarioInfoRef}
+              ref={promptInfoRef}
             >
               {tutorialStep >= 0 && (
-                <h2>
-                  Scenario {currentScenarioIndex + 1} /{" "}
-                  {studyData.scenarios.length}: {currentScenario.title}
-                </h2>
+                <h2>Category: {currentPrompt.technique}</h2>
               )}
-              {tutorialStep >= 0 && <p>{currentScenario.description}</p>}
+              <p>{renderPrompt(currentPrompt.prompt)}</p>
             </div>
           )}
-          <div className="chat-messages">
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`message ${message.sender} ${
-                  (index === 0 && highlightedElement === "first-message") ||
-                  (index === 1 && highlightedElement === "receiver-message")
-                    ? "highlight-glow"
-                    : ""
-                }`}
-                ref={
-                  index === 0
-                    ? firstMessageRef
-                    : index === 1
-                    ? receiverMessageRef
-                    : null
-                }
-              >
-                {(tutorialStep >= 1 && index === 0) ||
-                (tutorialStep >= 2 && index === 1) ||
-                tutorialStep >= 3
-                  ? message.content
-                  : ""}
-              </div>
-            ))}
-          </div>
           <div
             className={`message-input ${
               highlightedElement === "message-input" ? "highlight-glow" : ""
@@ -396,10 +332,10 @@ function ChatInterface({ userId, onSurveyPage }) {
                   handleSendMessage();
                 }
               }}
-              placeholder="Type your message here..."
+              placeholder="Type your answer here..."
               disabled={
                 isComplete ||
-                (isTutorial && tutorialStep < 3) ||
+                (isTutorial && tutorialStep < 1) ||
                 !tutorialStarted
               }
               ref={userInputRef}
@@ -408,22 +344,13 @@ function ChatInterface({ userId, onSurveyPage }) {
               onClick={handleSendMessage}
               disabled={
                 isComplete ||
-                (isTutorial && tutorialStep < 3) ||
+                (isTutorial && tutorialStep < 1) ||
                 !tutorialStarted
               }
             >
-              Send
+              Submit
             </button>
           </div>
-          {scenarioComplete && (
-            <div className="completion-message">
-              <p>
-                Scenario complete! Press Enter or click 'Next Scenario' to
-                continue.
-              </p>
-              <button onClick={handleNextScenario}>Next Scenario</button>
-            </div>
-          )}
         </>
       )}
       {isTutorial &&

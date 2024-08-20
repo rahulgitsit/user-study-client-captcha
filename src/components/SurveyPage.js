@@ -40,7 +40,7 @@ function SurveyPage({ userId }) {
 
       // Fetch reward code after survey completion
       const rewardResponse = await fetch(
-        `${BACKEND_URL}/api/fetch-reward-code`,
+        `${BACKEND_URL}/api/fetch-reward-code-captcha`,
         {
           method: "POST",
           headers: {
@@ -119,10 +119,13 @@ function SurveyPage({ userId }) {
                 >
                   <option value="">Select an option</option>
                   {/* Add options for tasks/questions */}
-                  <option value="a">Task A</option>
-                  <option value="b">Task B</option>
-                  <option value="c">Task C</option>
-                  <option value="d">Task D</option>
+                  <option value="a">Character Count</option>
+                  <option value="b">Word Count (Even/Odd)</option>
+                  <option value="c">Count Words with Specific Length</option>
+                  <option value="d">Compare Word Length to Number</option>
+                  <option value="e">Count Vowels or Consonants</option>
+                  <option value="f">Compare Decimal Numbers</option>
+                  <option value="g">Number Sense</option>
                 </select>
               </div>
 
@@ -138,10 +141,13 @@ function SurveyPage({ userId }) {
                 >
                   <option value="">Select an option</option>
                   {/* Add options for tasks/questions */}
-                  <option value="a">Task A</option>
-                  <option value="b">Task B</option>
-                  <option value="c">Task C</option>
-                  <option value="d">Task D</option>
+                  <option value="a">Character Count</option>
+                  <option value="b">Word Count (Even/Odd)</option>
+                  <option value="c">Count Words with Specific Length</option>
+                  <option value="d">Compare Word Length to Number</option>
+                  <option value="e">Count Vowels or Consonants</option>
+                  <option value="f">Compare Decimal Numbers</option>
+                  <option value="g">Number Sense</option>
                 </select>
               </div>
               <div className="survey-question">

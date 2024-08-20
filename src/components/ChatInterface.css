@@ -28,6 +28,11 @@
     background-color: #f0f0f0;
     align-self: flex-start;
   }
+
+.message.receiver strong {
+  font-weight: bold;
+  display: block; /* Add this line */
+}
   
   .message-input {
     display: flex;
@@ -78,6 +83,8 @@
   
   .scenario-info p {
     color: #484747;
+    line-height: 1.8; /* Increase line-height for more spacing */
+    white-space: pre-line; /* Preserve newlines */
   }
   
   .chat-interface-container {

@@ -12,15 +12,13 @@ function InstructionPage({ onStartChat }) {
       conversations.
       <ol>
         <li className="instruction-item">
-          You will be given a persona (who you are) and a scenario (what you are
-          doing)
+          You will be presented with different types of questions, including
+          word/character processing tasks and basic math problems, similar to a
+          CAPTCHA test.
         </li>
         <li className="instruction-item">
-          You will be asked to respond to the last message in the conversation
-        </li>
-        <li className="instruction-item">
-          You will be required to finish some word/character processing tasks or
-          basic math tasks in each round just like a CAPTCHA test.
+          Try your best to answer all the questions correctly. At the end, you
+          will be asked to complete a quick survey about this exercise.
         </li>
       </ol>
       <button onClick={onStartChat}>Start Chat</button>
