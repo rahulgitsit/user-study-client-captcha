@@ -1,0 +1,51 @@
+/* SurveyPage.css */
+.survey-page {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .survey-question {
+    margin-bottom: 20px;
+  }
+  
+  .rating-bubbles {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+  }
+  
+  .rating-bubble {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #ccc;
+    color: #fff;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 5px;
+    cursor: pointer;
+  }
+  
+  .rating-bubble.active {
+    background-color: #4caf50;
+  }
+  
+  textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    resize: vertical;
+  }
+  
+  button[type="submit"] {
+    padding: 10px 20px;
+    background-color: #4caf50;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }

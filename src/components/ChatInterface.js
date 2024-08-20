@@ -3,7 +3,7 @@ import "./ChatInterface.css";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
-function ChatInterface({ userId }) {
+function ChatInterface({ userId, onSurveyPage }) {
   const [studyData, setStudyData] = useState(null);
   const [currentScenarioIndex, setCurrentScenarioIndex] = useState(0);
   const [currentPromptIndex, setCurrentPromptIndex] = useState(0);
@@ -28,12 +28,11 @@ function ChatInterface({ userId }) {
   const receiverMessageRef = useRef(null);
   const inputAreaRef = useRef(null);
   const userInputRef = useRef(null); // Add a ref for the input element
-  const [rewardCode, setRewardCode] = useState(""); // New state for reward code
   const [isSaving, setIsSaving] = useState(false);
 
   const fetchStudyData = useCallback(async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/study-data`);
+      const response = await fetch(`${BACKEND_URL}/api/string-math-data`);
       const data = await response.json();
 
       // Add custom prompts for the first scenario
@@ -180,28 +179,6 @@ function ChatInterface({ userId }) {
     }
   }, [isComplete, scenarioComplete]);
 
-  const fetchRewardCode = useCallback(async () => {
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/generate-code`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ uid: userId }), // Include userId in the request body
-      });
-      const data = await response.json();
-      setRewardCode(data.code);
-    } catch (error) {
-      console.error("Error fetching reward code:", error);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (allScenariosComplete) {
-      fetchRewardCode();
-    }
-  }, [allScenariosComplete, fetchRewardCode]);
-
   const positionTutorialDialog = useCallback((step) => {
     let targetRef;
     switch (step) {
@@ -255,6 +232,12 @@ function ChatInterface({ userId }) {
       setHighlightedElement(null); // Remove highlight after tutorial
     }
   };
+
+  useEffect(() => {
+    if (allScenariosComplete) {
+      onSurveyPage(); // Call the onSurveyPage function when all scenarios are complete
+    }
+  }, [allScenariosComplete, onSurveyPage]);
 
   const handleKeyPress = (event) => {
     if (event.key === "Enter") {
@@ -353,15 +336,7 @@ function ChatInterface({ userId }) {
     <div className="chat-interface">
       {!allScenariosComplete && renderProgressBar()}
       {allScenariosComplete ? (
-        <div className="thank-you-message">
-          <h2>Thank You!</h2>
-          <p>
-            You have completed all scenarios. We appreciate your participation.
-          </p>
-          <p>
-            Your reward code is: <strong>{rewardCode}</strong>
-          </p>
-        </div>
+        <></>
       ) : (
         <>
           {tutorialStep >= 0 && (
