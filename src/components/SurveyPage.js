@@ -124,8 +124,12 @@ function SurveyPage({ userId }) {
                   <option value="c">Count Words with Specific Length</option>
                   <option value="d">Compare Word Length to Number</option>
                   <option value="e">Count Vowels or Consonants</option>
-                  <option value="f">Compare Decimal Numbers</option>
-                  <option value="g">Number Sense</option>
+                  <option value="f">
+                    Counting words based on starting letter
+                  </option>
+                  <option value="g">Compare Decimal Numbers</option>
+                  <option value="h">Number Sense</option>
+                  <option value="i">Counting Digits</option>
                 </select>
               </div>
 
@@ -146,8 +150,12 @@ function SurveyPage({ userId }) {
                   <option value="c">Count Words with Specific Length</option>
                   <option value="d">Compare Word Length to Number</option>
                   <option value="e">Count Vowels or Consonants</option>
-                  <option value="f">Compare Decimal Numbers</option>
-                  <option value="g">Number Sense</option>
+                  <option value="f">
+                    Counting words based on starting letter
+                  </option>
+                  <option value="g">Compare Decimal Numbers</option>
+                  <option value="h">Number Sense</option>
+                  <option value="i">Counting Digits</option>
                 </select>
               </div>
               <div className="survey-question">

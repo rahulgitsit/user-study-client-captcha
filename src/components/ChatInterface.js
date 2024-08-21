@@ -121,6 +121,8 @@ function ChatInterface({ userId, onSurveyPage }) {
           body: JSON.stringify({
             uid: userId,
             // prompt_id: prompts[currentPromptIndex].id,
+            tactic: currentPrompt.tactic, // Add tactic
+            technique: currentPrompt.technique, // Add technique
             prompt: prompts[currentPromptIndex].prompt,
             user_response: userInput,
           }),
