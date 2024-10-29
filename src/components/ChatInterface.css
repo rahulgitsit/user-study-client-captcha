@@ -294,3 +294,30 @@
   /* background-color: rgba(255, 255, 0, 0.3); Add a semi-transparent background */
   /* box-shadow: 0 0 10px rgba(255, 255, 0, 0.8); Add a glow effect */
 }
+
+.timer-warning {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes modalFade {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

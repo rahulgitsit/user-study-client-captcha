@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import "./ChatInterface.css";
+import Timer from "./Timer";
+import TimeoutModal from "./TimeoutModal";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -23,7 +25,11 @@ function ChatInterface({ userId, onSurveyPage }) {
   const promptInfoRef = useRef(null);
   const inputAreaRef = useRef(null);
   const userInputRef = useRef(null);
+
   const [isSaving, setIsSaving] = useState(false);
+  const [isTimeUp, setIsTimeUp] = useState(false);
+  const [isTimerActive, setIsTimerActive] = useState(false);
+  const [promptStartTime, setPromptStartTime] = useState(null);
 
   const fetchPrompts = useCallback(async () => {
     console.log("fetchPrompts called");
@@ -106,11 +112,19 @@ function ChatInterface({ userId, onSurveyPage }) {
     }
   }, [prompts, startNewRound]);
 
+  useEffect(() => {
+    if (!isTutorial && tutorialStarted) {
+      setIsTimerActive(true);
+      setPromptStartTime(Date.now());
+    }
+  }, [isTutorial, tutorialStarted]);
+
   const handleSendMessage = async () => {
     if (userInput.trim() === "" || allPromptsComplete || isSaving) return;
 
     setIsSaving(true);
-
+    const responseTime = Date.now() - promptStartTime; // Calculate response time in milliseconds
+    // console.log(responseTime);
     const saveConversation = async (retryCount = 3) => {
       try {
         await fetch(`${BACKEND_URL}/api/save-captcha-response`, {
@@ -125,6 +139,7 @@ function ChatInterface({ userId, onSurveyPage }) {
             technique: currentPrompt.technique, // Add technique
             prompt: prompts[currentPromptIndex].prompt,
             user_response: userInput,
+            response_time: responseTime,
           }),
         });
         setIsComplete(true);
@@ -147,8 +162,10 @@ function ChatInterface({ userId, onSurveyPage }) {
   const handleNextRound = () => {
     if (currentPromptIndex + 1 < prompts.length) {
       setCurrentPromptIndex((prevIndex) => prevIndex + 1);
+      setPromptStartTime(Date.now()); // Reset start time for new prompt
     } else {
       setAllPromptsComplete(true);
+      setIsTimerActive(false); // Stop timer when all prompts are complete
     }
     setCompletedPrompts((prev) => prev + 1);
 
@@ -158,6 +175,42 @@ function ChatInterface({ userId, onSurveyPage }) {
       }
     }, 0);
   };
+
+  const handleTimeUp = useCallback(() => {
+    setIsTimeUp(true);
+    setIsTimerActive(false);
+
+    // // Save the last response if there's any unsaved input
+    // if (currentPrompt && userInput.trim() && !isComplete && !isSaving) {
+    //   const saveLastResponse = async () => {
+    //     try {
+    //       await fetch(`${BACKEND_URL}/api/save-captcha-response`, {
+    //         method: "POST",
+    //         headers: {
+    //           "Content-Type": "application/json",
+    //         },
+    //         body: JSON.stringify({
+    //           uid: userId,
+    //           tactic: currentPrompt.tactic,
+    //           technique: currentPrompt.technique,
+    //           prompt: prompts[currentPromptIndex].prompt,
+    //           user_response: userInput,
+    //           response_time_ms: Date.now() - promptStartTime,
+    //           timed_out: true,
+    //         }),
+    //       });
+    //     } catch (error) {
+    //       console.error("Error saving final response:", error);
+    //     }
+    //   };
+    //   saveLastResponse();
+    // }
+
+    // Auto-redirect to survey after a delay
+    setTimeout(() => {
+      onSurveyPage();
+    }, 3000);
+  });
 
   useEffect(() => {
     if (isComplete) {
@@ -299,62 +352,78 @@ function ChatInterface({ userId, onSurveyPage }) {
 
   const currentPrompt = prompts[currentPromptIndex];
   console.log(currentPrompt);
+
   return (
     <div className="chat-interface">
-      {!allPromptsComplete && renderProgressBar()}
-      {allPromptsComplete ? (
-        <></>
-      ) : (
-        <>
-          {tutorialStep >= 0 && (
+      <Timer isActive={isTimerActive} onTimeUp={handleTimeUp} />
+
+      {isTimeUp && <TimeoutModal />}
+
+      <div
+        style={{
+          opacity: isTimeUp ? 0.5 : 1,
+          pointerEvents: isTimeUp ? "none" : "auto",
+        }}
+      >
+        {/* Wrap your existing JSX with this div */}
+        {!allPromptsComplete && renderProgressBar()}
+        {allPromptsComplete ? (
+          <></>
+        ) : (
+          <>
+            {tutorialStep >= 0 && (
+              <div
+                className={`prompt-info ${
+                  highlightedElement === "prompt-info" ? "highlight-glow" : ""
+                }`}
+                ref={promptInfoRef}
+              >
+                {tutorialStep >= 0 && (
+                  <h2>Category: {currentPrompt.technique}</h2>
+                )}
+                <p>{renderPrompt(currentPrompt.prompt)}</p>
+              </div>
+            )}
             <div
-              className={`prompt-info ${
-                highlightedElement === "prompt-info" ? "highlight-glow" : ""
+              className={`message-input ${
+                highlightedElement === "message-input" ? "highlight-glow" : ""
               }`}
-              ref={promptInfoRef}
+              ref={inputAreaRef}
             >
-              {tutorialStep >= 0 && (
-                <h2>Category: {currentPrompt.technique}</h2>
-              )}
-              <p>{renderPrompt(currentPrompt.prompt)}</p>
-            </div>
-          )}
-          <div
-            className={`message-input ${
-              highlightedElement === "message-input" ? "highlight-glow" : ""
-            }`}
-            ref={inputAreaRef}
-          >
-            <input
-              type="text"
-              value={userInput}
-              onChange={(e) => setUserInput(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === "Enter") {
-                  handleSendMessage();
+              <input
+                type="text"
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    handleSendMessage();
+                  }
+                }}
+                placeholder="Type your answer here..."
+                disabled={
+                  isComplete ||
+                  (isTutorial && tutorialStep < 1) ||
+                  !tutorialStarted ||
+                  isTimeUp
                 }
-              }}
-              placeholder="Type your answer here..."
-              disabled={
-                isComplete ||
-                (isTutorial && tutorialStep < 1) ||
-                !tutorialStarted
-              }
-              ref={userInputRef}
-            />
-            <button
-              onClick={handleSendMessage}
-              disabled={
-                isComplete ||
-                (isTutorial && tutorialStep < 1) ||
-                !tutorialStarted
-              }
-            >
-              Submit
-            </button>
-          </div>
-        </>
-      )}
+                ref={userInputRef}
+              />
+              <button
+                onClick={handleSendMessage}
+                disabled={
+                  isComplete ||
+                  (isTutorial && tutorialStep < 1) ||
+                  !tutorialStarted ||
+                  isTimeUp
+                }
+              >
+                Submit
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
       {isTutorial &&
         tutorialPosition.top !== 0 &&
         tutorialPosition.left !== 0 &&
@@ -362,4 +431,5 @@ function ChatInterface({ userId, onSurveyPage }) {
     </div>
   );
 }
+
 export default ChatInterface;
